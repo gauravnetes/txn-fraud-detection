@@ -16,7 +16,7 @@ func CallGraphEngine(tx models.Transaction) (models.Layer2Result, error) {
 		return models.Layer2Result{}, err
 	}
 
-	client := &http.Client{Timeout: 3 * time.Second}
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Post("http://localhost:8002/check-network", "application/json", bytes.NewBuffer(jsonData))
 	
 	if err != nil {

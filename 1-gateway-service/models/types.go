@@ -36,3 +36,11 @@ type VerifyResponse struct {
 	Score   float64 `json:"composite_score"`
 	Reason  string  `json:"reason"`  // LLM generated explanation
 }
+
+// RecipientCheckResponse is returned by the pre-flight check endpoint
+type RecipientCheckResponse struct {
+	Account     string `json:"account"`
+	Status      string `json:"status"`       // "SUSPICIOUS", "CLEAN", "UNKNOWN"
+	NetworkRisk string `json:"network_risk"`
+	HopsToFraud int    `json:"hops_to_fraud"`
+}

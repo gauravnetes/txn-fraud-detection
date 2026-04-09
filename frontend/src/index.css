@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-background: #FFFFFF;
+  --color-foreground: #1E293B;
+  
+  --color-primary: #A3E635;
+  --color-primary-foreground: #0F172A;
+  
+  --color-secondary: #064E3B;
+  --color-secondary-foreground: #FFFFFF;
+  
+  --color-muted: #F8FAFC;
+  --color-muted-foreground: #64748B;
+  
+  --color-accent: #A3E635;
+  --color-accent-foreground: #0F172A;
+  
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1E293B;
+  
+  --color-border: #E2E8F0;
+  --color-input: #E2E8F0;
+  --color-ring: #A3E635;
+
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  
+  --shadow-soft: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  --shadow-float: 0 30px 60px -12px rgba(0, 0, 0, 0.08), 0 18px 36px -18px rgba(0, 0, 0, 0.1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tighter font-extrabold;
+  }
+}
+
+@utility glass-panel {
+  @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-soft;
+}
+
+@utility section-padding {
+  @apply py-24 md:py-32 px-6;
+}
+
+@utility heading-massive {
+  @apply text-5xl md:text-7xl lg:text-8xl leading-[0.9] font-black tracking-tighter;
+}
+
+/* Hero Section Styles - Adapted to New Palette */
+.hero-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #0F172A; /* Deep Charcoal */
+}
+
+.hero-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.hero-title {
+  @apply text-5xl md:text-7xl lg:text-8xl leading-[0.9] font-black tracking-tighter;
+  color: #fff;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+}
+
+.title-char {
+  display: inline-block;
+}
+
+.hero-subtitle {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 700px;
+  line-height: 1.6;
+  @apply font-medium;
+}
+
+.side-menu {
+  position: fixed;
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.5em;
+  font-size: 0.75rem;
+  color: rgba(163, 230, 53, 0.6); /* Lime Green with opacity */
+}
+
+.scroll-progress {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-track {
+  width: 200px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-fill {
+  height: 100%;
+  background: #A3E635; /* Vibrant Lime Green */
+  transition: width 0.1s ease;
+}
+
+.scroll-sections {
+  position: relative;
+  z-index: 0;
+}
+
+.scroll-sections > div {
+  height: 100vh;
+}

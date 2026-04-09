@@ -80,3 +80,5 @@ yarn-error.log*
 /neo4j-data/
 /kafka-data/
 *.log
+
+/2-ml-engine/model/PS_20174392719_1491204439457_log.csv

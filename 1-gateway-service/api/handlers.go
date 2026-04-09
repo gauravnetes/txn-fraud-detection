@@ -48,11 +48,12 @@ func VerifyTransaction(c *gin.Context) {
 	// Escalation Logic: If Layer 1 or Layer 2 flag an issue, trigger the Agent
 	if layer1.AnomalyScore > 60.0 || layer2.NetworkRisk == "HIGH" {
 		log.Println("🔍 High risk detected. Escalating to Civic Reasoning Engine...")
-		// finalAction, reason, err = clients.CallReasoningEngine(tx, layer1, layer2)
-		
-		// Temporary fallback until CallReasoningEngine is implemented
-		finalAction = "HARD_BLOCK" // Fail-closed policy: lock it down if AI is unreachable
-		reason = "System automatically blocked due to high risk factors."
+		finalAction, reason, err = clients.CallReasoningEngine(tx, layer1, layer2)
+		if err != nil {
+			log.Printf("⚠️ Reasoning Engine Error, defaulting to HARD_BLOCK: %v", err)
+			finalAction = "HARD_BLOCK"
+			reason = "System automatically blocked — reasoning engine unreachable."
+		}
 	} else {
 		finalAction = "APPROVE"
 		reason = "Transaction aligns with behavioral patterns and has no known fraud network links."
@@ -68,4 +69,50 @@ func VerifyTransaction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// CheckRecipient performs a pre-flight check on a target account
+// before a transaction is initiated (Truecaller-style UX pattern).
+func CheckRecipient(c *gin.Context) {
+	account := c.Query("account")
+	if account == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'account' query parameter"})
+		return
+	}
+
+	log.Printf("🔍 Pre-flight check for recipient: %s", account)
+
+	// Build a minimal transaction just to query the graph engine
+	minimalTx := models.Transaction{
+		TxID:      "PREFLIGHT",
+		UserID:    "SYSTEM",
+		Amount:    0,
+		DeviceID:  "SYSTEM",
+		IPAddress: "0.0.0.0",
+		TargetAcc: account,
+	}
+
+	layer2, err := clients.CallGraphEngine(minimalTx)
+	if err != nil {
+		log.Printf("⚠️ Graph Engine Error during pre-flight: %v", err)
+		c.JSON(http.StatusOK, models.RecipientCheckResponse{
+			Account:     account,
+			Status:      "UNKNOWN",
+			NetworkRisk: "UNKNOWN",
+			HopsToFraud: -1,
+		})
+		return
+	}
+
+	status := "CLEAN"
+	if layer2.NetworkRisk == "HIGH" || layer2.NetworkRisk == "MEDIUM" {
+		status = "SUSPICIOUS"
+	}
+
+	c.JSON(http.StatusOK, models.RecipientCheckResponse{
+		Account:     account,
+		Status:      status,
+		NetworkRisk: layer2.NetworkRisk,
+		HopsToFraud: layer2.HopsToFraud,
+	})
 }
