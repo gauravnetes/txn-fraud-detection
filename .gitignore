@@ -1,0 +1,82 @@
+# ========================================
+# Environment Variables & Secrets (CRITICAL)
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+credentials.json
+
+# ========================================
+# OS & Editor Files (Windows/VSCode/Mac)
+# ========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ========================================
+# Service 1: Go (API Gateway)
+# ========================================
+# Compiled binaries
+/1-gateway-service/tx-verify
+/1-gateway-service/txn-fraud-detection
+/1-gateway-service/*.exe
+/1-gateway-service/bin/
+# Go workspace files
+go.work
+go.work.sum
+
+# ========================================
+# Services 2, 3, 4: Python (ML, Graph, LLM)
+# ========================================
+# Virtual Environments
+venv/
+env/
+.venv/
+.env/
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Machine Learning Models & Data
+# (Never push serialized models or large raw datasets to Git)
+*.joblib
+*.pkl
+*.h5
+*.model
+/2-ml-engine/data/
+/3-graph-engine/data/
+
+# ========================================
+# Frontend: Next.js / React
+# ========================================
+# dependencies
+/tx-verify-web/node_modules/
+/tx-verify-web/.pnp
+/tx-verify-web/.pnp.js
+
+# Next.js build output
+/tx-verify-web/.next/
+/tx-verify-web/out/
+/tx-verify-web/build/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================================
+# Infrastructure / Docker
+# ========================================
+# If you mount local volumes for your databases, ignore them!
+/redis-data/
+/neo4j-data/
+/kafka-data/
+*.log
