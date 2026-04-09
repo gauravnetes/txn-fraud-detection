@@ -116,3 +116,35 @@ func CheckRecipient(c *gin.Context) {
 		HopsToFraud: layer2.HopsToFraud,
 	})
 }
+
+// GetNetworkGraph fetches the node/link visual graph from the Neo4j Graph Engine
+func GetNetworkGraph(c *gin.Context) {
+	account := c.Query("account")
+	sender := c.Query("sender")
+	if account == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'account' query parameter"})
+		return
+	}
+
+	url := "http://localhost:8002/graph?account=" + account
+	if sender != "" {
+		url += "&sender=" + sender
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("⚠️ Graph Engine UI query failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Graph engine unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(resp.StatusCode, gin.H{"error": "Graph engine returned non-200"})
+		return
+	}
+
+	// Stream response back to frontend
+	c.DataFromReader(http.StatusOK, resp.ContentLength, resp.Header.Get("Content-Type"), resp.Body, nil)
+}

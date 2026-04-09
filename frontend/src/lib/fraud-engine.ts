@@ -105,6 +105,25 @@ export const checkRecipient = async (account: string): Promise<RecipientCheckRes
   }
 };
 
+// ─── Graph Visualization Fetch ──────────────────────────────────────
+
+export const fetchNetworkGraph = async (account: string, sender?: string): Promise<{ nodes: any[], links: any[] }> => {
+  try {
+    let url = `/api/v1/network-graph?account=${encodeURIComponent(account)}`;
+    if (sender) {
+      url += `&sender=${encodeURIComponent(sender)}`;
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Backend returned ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('[fraud-engine] Network graph fetch failed:', error);
+    return { nodes: [], links: [] };
+  }
+};
+
 // ─── Client-side Fallback (Original Logic) ──────────────────────────
 
 const analyzeTransactionLocal = (tx: {

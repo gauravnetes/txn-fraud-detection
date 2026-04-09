@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Smartphone, Monitor, Laptop, Search, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
+import NetworkGraph from '@/components/NetworkGraph';
 
 export default function SimulatePayment() {
   const addTransaction = useFraudStore((state) => state.addTransaction);
@@ -19,8 +20,10 @@ export default function SimulatePayment() {
   // Pre-flight recipient check state
   const [recipientCheck, setRecipientCheck] = useState<RecipientCheckResponse | null>(null);
   const [isCheckingRecipient, setIsCheckingRecipient] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const [formData, setFormData] = useState({
+    sender: 'C1305486145', // Default to a Kaggle dataset user
     amount: '',
     recipient: '',
     note: '',
@@ -51,9 +54,19 @@ export default function SimulatePayment() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setResult(null);
+    setValidationError('');
 
+    const kaggleIdPattern = /^C\d{10}$/;
+    if (!kaggleIdPattern.test(formData.sender)) {
+      setValidationError("Sender ID invalid. Must be 'C' followed by exactly 10 digits (e.g. C1305486145).");
+      return;
+    }
+    if (!kaggleIdPattern.test(formData.recipient)) {
+      setValidationError("Recipient ID invalid. Must be 'C' followed by exactly 10 digits (e.g. C553264065).");
+      return;
+    }
+
+    setIsSubmitting(true);
     const amount = parseFloat(formData.amount);
     const txId = `TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     const timestamp = new Date().toISOString();
@@ -61,7 +74,7 @@ export default function SimulatePayment() {
     // Call the REAL backend (Go Gateway → ML → Graph → Reasoning)
     const analysis = await verifyTransaction({
       tx_id: txId,
-      user_id: 'USR-8821',
+      user_id: formData.sender, // Use realistic Kaggle User ID
       amount,
       timestamp,
       device_id: `DEV-${formData.device.toUpperCase()}`,
@@ -74,7 +87,7 @@ export default function SimulatePayment() {
       id: txId,
       amount,
       timestamp: Date.now(),
-      user_id: 'USR-8821',
+      user_id: formData.sender,
       recipient: formData.recipient,
       note: formData.note,
       device_id: `DEV-${formData.device.toUpperCase()}`,
@@ -91,9 +104,40 @@ export default function SimulatePayment() {
       recipient_status: recipientCheck?.status,
     };
 
-    addTransaction(tx);
-    setResult(tx);
-    setIsSubmitting(false);
+    if (analysis.status === 'allow' && (window as any).Razorpay) {
+      // Show Razorpay UI for Approved Transactions
+      const options = {
+        key: 'rzp_test_1DP5mmOlF5G5ag', // Dummy test key for demo
+        amount: amount * 100, // Razorpay takes amount in paise
+        currency: 'INR',
+        name: 'tx.verify Demo',
+        description: 'Fraud Checked Transfer',
+        handler: function (response: any) {
+          addTransaction(tx);
+          setResult(tx);
+          setIsSubmitting(false);
+        },
+        prefill: {
+          name: formData.sender,
+          contact: '9999999999'
+        },
+        modal: {
+          ondismiss: function() {
+            setIsSubmitting(false);
+          }
+        }
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        setIsSubmitting(false);
+      });
+      rzp.open();
+    } else {
+      // Add directly for blocked or missing razorpay cases
+      addTransaction(tx);
+      setResult(tx);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -110,9 +154,40 @@ export default function SimulatePayment() {
               <CardDescription className="text-muted-foreground text-base">
                 Test the fraud detection engine by simulating a real transaction through all 3 layers.
               </CardDescription>
+              {validationError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium">
+                  {validationError}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="sender" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sender ID (Your Account)</Label>
+                    <Input
+                      id="sender"
+                      placeholder="e.g. C123456789"
+                      className="bg-white border-border h-12 rounded-xl"
+                      value={formData.sender}
+                      onChange={(e) => setFormData({...formData, sender: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount (INR)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      placeholder="0.00"
+                      className="bg-white border-border h-12 rounded-xl"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="method" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Payment Method</Label>
@@ -129,18 +204,6 @@ export default function SimulatePayment() {
                         <SelectItem value="Card">Card Payment</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount (INR)</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="0.00"
-                      className="bg-white border-border h-12 rounded-xl"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      required
-                    />
                   </div>
                 </div>
 
@@ -414,6 +477,19 @@ export default function SimulatePayment() {
               </div>
             </div>
           </div>
+
+          <AnimatePresence>
+            {result && result.recipient && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <NetworkGraph accountId={result.recipient} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

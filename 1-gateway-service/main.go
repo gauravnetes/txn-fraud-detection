@@ -36,6 +36,7 @@ func main() {
 	{
 		v1.POST("/verify", api.VerifyTransaction)
 		v1.GET("/check-recipient", api.CheckRecipient)
+		v1.GET("/network-graph", api.GetNetworkGraph)
 	}
 
 	log.Println("🚀 Starting tx-verify Gateway on :8080")

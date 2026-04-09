@@ -170,11 +170,31 @@ async def health():
 async def check_network(payload: TransactionPayload):
     """
     Called by the Go Gateway during transaction verification.
-    Evaluates the target account's proximity to known fraud nodes.
+    Evaluates both the sender and the target account's proximity to known fraud nodes.
     """
-    logger.info("⚡ Checking network for TxID=%s, Target=%s", payload.tx_id, payload.target_account)
-    result = evaluate_network_risk(payload.target_account)
-    return NetworkCheckResponse(**result)
+    logger.info("⚡ Checking network for TxID=%s, Sender=%s, Target=%s", payload.tx_id, payload.user_id, payload.target_account)
+    
+    sender_result = evaluate_network_risk(payload.user_id)
+    target_result = evaluate_network_risk(payload.target_account)
+    
+    # Combine risks (take the worst-case scenario)
+    combined_risk = "LOW"
+    hops = -1
+    flagged = None
+    
+    for res in [sender_result, target_result]:
+        if res["network_risk"] == "HIGH":
+            combined_risk = "HIGH"
+            hops = min(hops, res["hops_to_fraud"]) if hops != -1 else res["hops_to_fraud"]
+            flagged = res["flagged_entity"]
+        elif res["network_risk"] == "MEDIUM" and combined_risk != "HIGH":
+            combined_risk = "MEDIUM"
+            
+    return NetworkCheckResponse(
+        network_risk=combined_risk,
+        hops_to_fraud=hops,
+        flagged_entity=flagged
+    )
 
 
 @app.get("/check-recipient", response_model=RecipientCheckResponse)
@@ -195,6 +215,76 @@ async def check_recipient(account: str):
         hops_to_fraud=result["hops_to_fraud"],
     )
 
+
+@app.get("/graph")
+async def get_graph(account: str, sender: Optional[str] = None):
+    """
+    Returns the network graph for D3 Force Graph on the frontend, showing both Sender and Receiver connections.
+    """
+    db = get_driver()
+    if db is None:
+        return {"nodes": [], "links": []}
+
+    accounts_to_check = [account]
+    if sender:
+        accounts_to_check.append(sender)
+
+    query = """
+    MATCH path = (a:Account {id: $acc_id})-[r:SENT_TO*1..3]-(b)
+    RETURN path
+    LIMIT 40
+    """
+    
+    nodes_dict = {}
+    links_list = []
+    
+    try:
+        with db.session() as session:
+            for acc in accounts_to_check:
+                result = session.run(query, acc_id=acc)
+                for record in result:
+                    path = record["path"]
+                    # Process nodes
+                    for node in path.nodes:
+                        node_id = node["id"]
+                        if node_id not in nodes_dict:
+                            nodes_dict[node_id] = {
+                                "id": node_id,
+                                "group": 2 if node.get("flagged") else 1
+                            }
+                    
+                    # Process relationships
+                    for rel in path.relationships:
+                        links_list.append({
+                            "source": rel.start_node["id"],
+                            "target": rel.end_node["id"],
+                            "amount": rel.get("amount", 0)
+                        })
+                        
+                # Ensure the target node is always in the graph even if no connections
+                if acc not in nodes_dict:
+                    direct = session.run("MATCH (a:Account {id: $acc_id}) RETURN a.flagged AS flagged", acc_id=acc)
+                    flag_rec = direct.single()
+                    nodes_dict[acc] = {
+                        "id": acc,
+                        "group": 2 if (flag_rec and flag_rec["flagged"]) else 1
+                    }
+                
+    except Exception as e:
+        logger.error("Graph visualization query failed: %s", e)
+
+    unique_links = []
+    seen_links = set()
+    for link in links_list:
+        link_str = f"{link['source']}->{link['target']}"
+        if link_str not in seen_links:
+            seen_links.add(link_str)
+            unique_links.append(link)
+
+    return {
+        "nodes": list(nodes_dict.values()),
+        "links": unique_links
+    }
 
 if __name__ == "__main__":
     import uvicorn
